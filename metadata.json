@@ -1,0 +1,7 @@
+{
+  "name": "Q-Beam: Hybrid File Share",
+  "description": "A high-speed hybrid file-sharing platform using P2P (PeerJS) for large data and Cloud for instant media previews, featuring a Gemini-powered file analyst.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
