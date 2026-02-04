@@ -11,7 +11,8 @@ import {
   RefreshCw, 
   ChevronLeft,
   Image as ImageIcon,
-  Loader2
+  Loader2,
+  Music
 } from 'lucide-react';
 import { QRData, SharedFileMetadata } from '../types';
 
@@ -27,11 +28,14 @@ const Receiver: React.FC = () => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isAudio = (fileName: string) => {
+    return /\.(mp3|wav|m4a|flac|ogg|aac|wma)$/i.test(fileName);
+  };
+
   const startScanner = async (mode: 'user' | 'environment') => {
     setStep('SCANNING');
     setIsScanning(true);
     
-    // Slight delay to ensure DOM element is ready
     setTimeout(async () => {
       try {
         const scanner = new Html5Qrcode("qr-reader-target", {
@@ -81,19 +85,15 @@ const Receiver: React.FC = () => {
     setStep('PROCESSING');
     
     try {
-      // Use the hidden target that is always present in the DOM
       const scanner = new Html5Qrcode("qr-reader-target-hidden", false);
       const decodedText = await scanner.scanFile(file, true);
       onScanSuccess(decodedText);
-      
-      // Attempt to clear if instance was successful
       try { scanner.clear(); } catch(e) {}
     } catch (err) {
       console.error("QR decoding failed", err);
       setErrorMessage("No valid QR code detected in this image. Please try a clearer photo.");
       setStep('ERROR');
     } finally {
-      // Reset input value so same file can be selected again if needed
       if (e.target) e.target.value = '';
     }
   };
@@ -106,7 +106,6 @@ const Receiver: React.FC = () => {
       setReceivedFiles(data.files);
       setStep('PROCESSING');
 
-      // Automatically trigger downloads
       data.files.forEach((file, index) => {
         setTimeout(() => {
           const link = document.createElement('a');
@@ -142,10 +141,9 @@ const Receiver: React.FC = () => {
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-300 max-w-full">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-2xl sm:text-3xl font-black text-white italic uppercase tracking-tight">Intercept</h2>
+          <h2 className="text-2xl sm:text-3xl font-black text-white italic uppercase tracking-tighter">Intercept</h2>
           <p className="text-zinc-500 text-xs sm:text-sm font-medium">Capture incoming beams.</p>
         </div>
         {step !== 'MENU' && step !== 'COMPLETE' && (
@@ -161,7 +159,6 @@ const Receiver: React.FC = () => {
         )}
       </div>
 
-      {/* Menu Step */}
       {step === 'MENU' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-bottom-4 duration-500">
           <button 
@@ -195,10 +192,9 @@ const Receiver: React.FC = () => {
         </div>
       )}
 
-      {/* Scanning Step */}
       {step === 'SCANNING' && (
         <div className="space-y-4 animate-in zoom-in-95">
-          <div className="relative overflow-hidden rounded-[2.5rem] border-4 border-zinc-900 bg-black aspect-square max-w-[400px] mx-auto">
+          <div className="relative overflow-hidden rounded-[2.5rem] border-4 border-zinc-900 bg-black aspect-square max-w-[400px] mx-auto shadow-2xl shadow-green-500/10">
             <div id="qr-reader-target" className="w-full h-full" />
             
             <div className="absolute top-4 left-0 right-0 flex justify-center z-10 pointer-events-none">
@@ -219,7 +215,6 @@ const Receiver: React.FC = () => {
         </div>
       )}
 
-      {/* Processing Step */}
       {step === 'PROCESSING' && (
         <div className="glass p-12 rounded-[3rem] flex flex-col items-center text-center space-y-6 animate-in zoom-in-95 border-zinc-800">
           <div className="w-20 h-20 border-4 border-zinc-800 border-t-green-500 rounded-full animate-spin flex items-center justify-center">
@@ -230,7 +225,6 @@ const Receiver: React.FC = () => {
         </div>
       )}
 
-      {/* Complete Step */}
       {step === 'COMPLETE' && (
         <div className="glass p-8 rounded-[3rem] flex flex-col items-center text-center space-y-6 animate-in zoom-in-95 border-green-500/30">
           <div className="w-20 h-20 bg-green-500 text-black rounded-full flex items-center justify-center shadow-xl shadow-green-500/20">
@@ -238,13 +232,17 @@ const Receiver: React.FC = () => {
           </div>
           
           <div className="w-full space-y-4">
-            <h3 className="text-2xl font-bold text-white italic uppercase tracking-tight">Beam Captured</h3>
+            <h3 className="text-2xl font-bold text-white italic uppercase tracking-tighter">Beam Captured</h3>
             <p className="text-[10px] font-black text-green-500 uppercase tracking-widest">Downloaded to your local device</p>
             <div className="max-h-[350px] overflow-y-auto space-y-3 pr-1 custom-scrollbar">
               {receivedFiles.map((file, i) => (
                 <div key={i} className="flex items-center gap-3 p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800 text-left hover:border-zinc-600 transition-colors group">
                   <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center group-hover:bg-green-500/10 transition-colors">
-                    <FileIcon className="w-5 h-5 text-green-500" />
+                    {isAudio(file.name) ? (
+                      <Music className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <FileIcon className="w-5 h-5 text-white/50" />
+                    )}
                   </div>
                   <div className="flex-1 overflow-hidden">
                     <p className="text-xs font-bold text-white italic truncate">{file.name}</p>
@@ -253,7 +251,7 @@ const Receiver: React.FC = () => {
                   <a
                     href={file.cloudUrl.includes('/upload/') ? file.cloudUrl.replace('/upload/', '/upload/fl_attachment/') : file.cloudUrl}
                     target="_blank"
-                    className="p-3 bg-white text-black rounded-xl hover:bg-green-500 transition-colors"
+                    className="p-3 bg-white text-black rounded-xl hover:bg-green-500 transition-colors shadow-lg active:scale-90"
                   >
                     <Download className="w-4 h-4" />
                   </a>
@@ -274,7 +272,6 @@ const Receiver: React.FC = () => {
         </div>
       )}
 
-      {/* Error Step */}
       {step === 'ERROR' && (
         <div className="p-12 glass rounded-[3rem] flex flex-col items-center text-center space-y-6 border-rose-500/30">
           <AlertCircle className="w-16 h-16 text-rose-500" />
@@ -284,7 +281,6 @@ const Receiver: React.FC = () => {
         </div>
       )}
 
-      {/* Persistent hidden container for scanFile calls */}
       <div 
         id="qr-reader-target-hidden" 
         style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', visibility: 'hidden' }} 

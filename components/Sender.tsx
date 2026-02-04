@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { File as FileIcon, Sparkles, Loader2, Cloud, Trash2, Plus, Share2, Check } from 'lucide-react';
+import { File as FileIcon, Sparkles, Loader2, Cloud, Trash2, Plus, Share2, Check, Music } from 'lucide-react';
 import { SharedFileMetadata, QRData } from '../types';
 import { analyzeFileTransfer } from '../services/gemini';
 
@@ -14,6 +14,10 @@ const Sender: React.FC = () => {
 
   const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/ds2mbrzcn/auto/upload";
   const UPLOAD_PRESET = "real_unsigned";
+
+  const isAudio = (fileName: string) => {
+    return /\.(mp3|wav|m4a|flac|ogg|aac|wma)$/i.test(fileName);
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected: File[] = Array.from(e.target.files || []);
@@ -37,7 +41,7 @@ const Sender: React.FC = () => {
     try {
       const uploadedFiles: SharedFileMetadata[] = [];
       for (let i = 0; i < files.length; i++) {
-        setUploadStatus(`Uploading ${files[i].name}...`);
+        setUploadStatus(`Beaming ${files[i].name}...`);
         const formData = new FormData();
         formData.append("file", files[i]);
         formData.append("upload_preset", UPLOAD_PRESET);
@@ -88,25 +92,25 @@ const Sender: React.FC = () => {
     <div className="w-full flex flex-col gap-6 animate-in zoom-in-95 duration-300 max-w-full">
       <div className="flex justify-between items-end">
         <div className="space-y-1">
-          <h2 className="text-2xl sm:text-3xl font-black text-white italic uppercase">Beam</h2>
+          <h2 className="text-2xl sm:text-3xl font-black text-white italic uppercase tracking-tighter">Beam</h2>
           <p className="text-zinc-500 text-xs sm:text-sm font-medium">Cloud-powered instant relay.</p>
         </div>
         {files.length > 0 && !qrPayload && (
           <p className="text-[10px] font-black uppercase text-green-500 bg-green-500/10 px-3 py-1 rounded-full">
-            {formatSize(files.reduce((acc, f) => acc + f.size, 0))}
+            {formatSize(files.reduce((acc, f) => acc + f.size, 0))} Total
           </p>
         )}
       </div>
 
       {!qrPayload ? (
         files.length === 0 ? (
-          <label className="flex flex-col items-center justify-center p-8 sm:p-12 border-2 border-dashed rounded-[2rem] sm:rounded-[2.5rem] border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900 hover:border-zinc-700 cursor-pointer transition-all duration-300 group">
-            <input type="file" onChange={handleFileChange} className="hidden" multiple />
+          <label className="flex flex-col items-center justify-center p-8 sm:p-12 border-2 border-dashed rounded-[2.5rem] sm:rounded-[2.5rem] border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900 hover:border-zinc-700 cursor-pointer transition-all duration-300 group">
+            <input type="file" onChange={handleFileChange} className="hidden" multiple accept="audio/*,image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar" />
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mb-6 bg-zinc-800 text-zinc-500 group-hover:text-green-500 transition-colors">
               <Cloud className="w-8 h-8 sm:w-10 sm:h-10" />
             </div>
-            <p className="text-base sm:text-lg font-bold text-white text-center px-4 italic">Load local files</p>
-            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mt-2">Any format supported</p>
+            <p className="text-base sm:text-lg font-bold text-white text-center px-4 italic leading-tight">Drop songs or files here</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mt-2">Any format, any size</p>
           </label>
         ) : (
           <div className="space-y-6">
@@ -114,23 +118,31 @@ const Sender: React.FC = () => {
               <div className="flex items-center justify-between px-2">
                 <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Active Batch</span>
                 <label className="text-[10px] font-black text-green-500 uppercase tracking-widest cursor-pointer hover:underline flex items-center gap-1">
-                  <Plus className="w-3 h-3" /> Add More
-                  <input type="file" onChange={handleFileChange} className="hidden" multiple />
+                  <Plus className="w-3 h-3" /> More Media
+                  <input type="file" onChange={handleFileChange} className="hidden" multiple accept="audio/*,image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar" />
                 </label>
               </div>
-              <div className="max-h-[200px] overflow-y-auto space-y-2 custom-scrollbar pr-1">
+              <div className="max-h-[220px] overflow-y-auto space-y-2 custom-scrollbar pr-1">
                 {files.map((f, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-zinc-900/40 border border-zinc-800/50 rounded-xl">
+                  <div key={i} className="flex items-center justify-between p-3 bg-zinc-900/40 border border-zinc-800/50 rounded-xl hover:border-zinc-600 transition-colors">
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <FileIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      {isAudio(f.name) ? (
+                        <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Music className="w-4 h-4 text-green-500" />
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 bg-zinc-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <FileIcon className="w-4 h-4 text-zinc-400" />
+                        </div>
+                      )}
                       <div className="overflow-hidden">
                         <p className="text-xs font-bold text-white truncate italic">{f.name}</p>
                         <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{formatSize(f.size)}</p>
                       </div>
                     </div>
                     {!isUploading && (
-                      <button onClick={() => removeFile(i)} className="p-1.5 text-zinc-600 hover:text-rose-500 transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
+                      <button onClick={() => removeFile(i)} className="p-2 text-zinc-600 hover:text-rose-500 transition-colors">
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -139,7 +151,7 @@ const Sender: React.FC = () => {
             </div>
 
             {aiTip && !isUploading && (
-              <div className="bg-zinc-900/80 border border-zinc-800 p-4 rounded-2xl flex gap-3 items-center">
+              <div className="bg-zinc-900/80 border border-zinc-800 p-4 rounded-2xl flex gap-3 items-center animate-in slide-in-from-left duration-300">
                 <Sparkles className="w-4 h-4 text-green-500 flex-shrink-0" />
                 <p className="text-[11px] text-zinc-400 font-medium italic leading-relaxed">
                   {aiTip}
@@ -151,13 +163,13 @@ const Sender: React.FC = () => {
               <button
                 onClick={startUpload}
                 disabled={isUploading}
-                className="w-full bg-white hover:bg-zinc-200 text-black font-black py-4 sm:py-5 rounded-[1.5rem] sm:rounded-[2rem] flex items-center justify-center gap-3 transition-all uppercase italic tracking-wider text-sm disabled:opacity-50 relative overflow-hidden"
+                className="w-full bg-white hover:bg-zinc-200 text-black font-black py-4 sm:py-5 rounded-[1.5rem] sm:rounded-[2rem] flex items-center justify-center gap-3 transition-all uppercase italic tracking-wider text-sm disabled:opacity-50 relative overflow-hidden active:scale-95"
               >
                 {isUploading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Beaming {progress}%</span>
-                    <div className="absolute bottom-0 left-0 h-1 bg-green-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+                    <span className="z-10">Beaming {progress}%</span>
+                    <div className="absolute bottom-0 left-0 h-full bg-green-500/20 transition-all duration-300 pointer-events-none" style={{ width: `${progress}%` }} />
                   </>
                 ) : (
                   <>
@@ -177,15 +189,15 @@ const Sender: React.FC = () => {
       ) : (
         <div className="space-y-8 animate-in zoom-in-95 flex flex-col items-center">
           <div className="p-6 sm:p-8 bg-white rounded-[2rem] sm:rounded-[3rem] shadow-2xl shadow-green-500/20">
-            <QRCodeSVG value={qrPayload} size={180} sm:size={220} level="M" className="w-[180px] h-[180px] sm:w-[220px] sm:h-[220px]" />
+            <QRCodeSVG value={qrPayload} size={220} level="H" className="w-[200px] h-[200px] sm:w-[240px] sm:h-[240px]" />
           </div>
           
           <div className="text-center space-y-2">
             <div className="flex items-center justify-center gap-2 text-green-500">
               <Check className="w-5 h-5" />
-              <span className="text-sm font-black uppercase italic">Beam Ready</span>
+              <span className="text-sm font-black uppercase italic">Universal Beam Ready</span>
             </div>
-            <p className="text-zinc-500 text-xs font-medium">Scan this QR on the receiver device.</p>
+            <p className="text-zinc-500 text-xs font-medium">Scan this QR on any device to receive audio.</p>
           </div>
 
           <button
@@ -196,7 +208,7 @@ const Sender: React.FC = () => {
             }}
             className="w-full bg-zinc-900 border border-zinc-800 text-white font-black py-4 rounded-[1.5rem] sm:rounded-[2rem] uppercase italic tracking-wider text-xs hover:bg-zinc-800 transition-colors"
           >
-            New Beam
+            Start New Beam
           </button>
         </div>
       )}
