@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { File as FileIcon, ArrowRight, Sparkles, Loader2, Wifi, Cloud } from 'lucide-react';
+import { File as FileIcon, ArrowRight, Sparkles, Loader2, Wifi, Cloud, Trash2, Plus } from 'lucide-react';
 import Peer from 'peerjs';
 import { TransferType, SharedFileMetadata, QRData } from '../types';
 import { analyzeFileTransfer } from '../services/gemini';
@@ -12,7 +12,7 @@ interface SenderProps {
 }
 
 const Sender: React.FC<SenderProps> = ({ myPeerId, peer }) => {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [step, setStep] = useState<1 | 2>(1);
   const [transferMode, setTransferMode] = useState<TransferType>(TransferType.P2P);
   const [aiTip, setAiTip] = useState<string>('');
@@ -22,38 +22,56 @@ const Sender: React.FC<SenderProps> = ({ myPeerId, peer }) => {
   const [isConnected, setIsConnected] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
-    if (selected) {
-      setFile(selected);
+    const selected = Array.from(e.target.files || []);
+    if (selected.length > 0) {
+      setFiles(prev => [...prev, ...selected]);
       setIsAnalyzing(true);
-      const tip = await analyzeFileTransfer(selected.name, selected.size, selected.type);
+      // Analyze the first file or a summary
+      const tip = await analyzeFileTransfer(
+        selected.length > 1 ? `${selected.length} files batch` : selected[0].name,
+        selected.reduce((acc, f) => acc + f.size, 0),
+        selected[0].type
+      );
       setAiTip(tip || '');
       setIsAnalyzing(false);
     }
   };
 
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const generateShare = () => {
-    if (!file) return;
+    if (files.length === 0) return;
 
     peer.on('connection', (conn) => {
       setIsConnected(true);
       conn.on('open', () => {
-        const meta: SharedFileMetadata = {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-        };
-        conn.send({ type: 'META', payload: meta });
+        // Send a start of batch signal
+        conn.send({ type: 'BATCH_START', payload: { count: files.length } });
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const buffer = e.target?.result;
-          if (buffer) {
-            conn.send({ type: 'FILE', payload: buffer });
-            setTransferProgress(100);
-          }
-        };
-        reader.readAsArrayBuffer(file);
+        files.forEach((file, index) => {
+          const meta: SharedFileMetadata = {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+          };
+          
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const buffer = e.target?.result;
+            if (buffer) {
+              // Send metadata and file data associated by index
+              conn.send({ type: 'META', payload: { ...meta, index } });
+              conn.send({ type: 'FILE', payload: { data: buffer, index } });
+              
+              if (index === files.length - 1) {
+                setTransferProgress(100);
+              }
+            }
+          };
+          reader.readAsArrayBuffer(file);
+        });
       });
       conn.on('error', () => setIsConnected(false));
     });
@@ -61,7 +79,7 @@ const Sender: React.FC<SenderProps> = ({ myPeerId, peer }) => {
     const qrData: QRData = {
       hostId: myPeerId,
       transferType: transferMode,
-      meta: [{ name: file.name, size: file.size, type: file.type }],
+      meta: files.map(f => ({ name: f.name, size: f.size, type: f.type })),
     };
 
     setQrPayload(JSON.stringify(qrData));
@@ -76,36 +94,75 @@ const Sender: React.FC<SenderProps> = ({ myPeerId, peer }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const totalSize = files.reduce((acc, f) => acc + f.size, 0);
+
   return (
     <div className="w-full flex flex-col gap-6 animate-in zoom-in-95 duration-300">
       {step === 1 ? (
         <>
-          <div className="space-y-1">
-            <h2 className="text-3xl font-black text-white italic uppercase">Select</h2>
-            <p className="text-zinc-500 text-sm font-medium">Prepare your data for transmission.</p>
+          <div className="flex justify-between items-end">
+            <div className="space-y-1">
+              <h2 className="text-3xl font-black text-white italic uppercase">Select</h2>
+              <p className="text-zinc-500 text-sm font-medium">Add files for the beam.</p>
+            </div>
+            {files.length > 0 && (
+              <p className="text-[10px] font-black uppercase text-green-500 bg-green-500/10 px-3 py-1 rounded-full">
+                Total: {formatSize(totalSize)}
+              </p>
+            )}
           </div>
 
           <div className="relative group">
-            <input type="file" onChange={handleFileChange} className="hidden" id="file-input" />
-            <label 
-              htmlFor="file-input"
-              className={`flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-[2.5rem] cursor-pointer transition-all duration-300 ${file ? 'border-green-500 bg-green-500/5' : 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900 hover:border-zinc-700'}`}
-            >
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${file ? 'bg-green-500 text-black' : 'bg-zinc-800 text-zinc-500'}`}>
-                <FileIcon className="w-10 h-10" />
+            <input type="file" onChange={handleFileChange} className="hidden" id="file-input" multiple />
+            
+            {files.length === 0 ? (
+              <label 
+                htmlFor="file-input"
+                className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-[2.5rem] border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900 hover:border-zinc-700 cursor-pointer transition-all duration-300"
+              >
+                <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6 bg-zinc-800 text-zinc-500">
+                  <FileIcon className="w-10 h-10" />
+                </div>
+                <p className="text-lg font-bold text-white text-center px-4 italic">Choose local files</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mt-2">Any file, any size</p>
+              </label>
+            ) : (
+              <div className="space-y-4">
+                <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                  {files.map((f, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 bg-zinc-900/60 border border-zinc-800 rounded-2xl group/item">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center text-green-500 flex-shrink-0">
+                          <FileIcon className="w-5 h-5" />
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="text-sm font-bold text-white truncate italic">{f.name}</p>
+                          <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{formatSize(f.size)}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => removeFile(i)}
+                        className="p-2 text-zinc-600 hover:text-rose-500 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                
+                <label 
+                  htmlFor="file-input"
+                  className="w-full flex items-center justify-center gap-2 p-4 border border-zinc-800 border-dashed rounded-2xl hover:bg-zinc-900/40 cursor-pointer text-zinc-500 hover:text-white transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="text-xs font-black uppercase tracking-widest">Add more</span>
+                </label>
               </div>
-              <p className="text-lg font-bold text-white text-center px-4 overflow-hidden text-ellipsis w-full italic">
-                {file ? file.name : 'Choose local file'}
-              </p>
-              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mt-2">
-                {file ? formatSize(file.size) : 'Max 2GB recommended'}
-              </p>
-            </label>
+            )}
           </div>
 
-          {file && (
+          {files.length > 0 && (
             <div className="space-y-5 animate-in fade-in slide-in-from-top-4 duration-500">
-              {/* AI Analysis */}
               <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-3xl flex gap-4 items-center">
                 <div className="bg-green-500/10 p-3 rounded-2xl text-green-500">
                   {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
@@ -118,7 +175,6 @@ const Sender: React.FC<SenderProps> = ({ myPeerId, peer }) => {
                 </div>
               </div>
 
-              {/* Mode Selection */}
               <div className="grid grid-cols-2 gap-4">
                 <button 
                   onClick={() => setTransferMode(TransferType.P2P)}

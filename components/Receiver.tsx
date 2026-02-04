@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-// Added Wifi to the imports from lucide-react
 import { Camera, CheckCircle, Download, Loader2, AlertCircle, File as FileIcon, Wifi } from 'lucide-react';
 import Peer, { DataConnection } from 'peerjs';
 import { QRData, SharedFileMetadata } from '../types';
@@ -11,12 +10,21 @@ interface ReceiverProps {
   peer: Peer;
 }
 
+interface ReceivedFile {
+  url: string;
+  meta: SharedFileMetadata;
+}
+
 const Receiver: React.FC<ReceiverProps> = ({ myPeerId, peer }) => {
   const [scanResult, setScanResult] = useState<QRData | null>(null);
   const [status, setStatus] = useState<'IDLE' | 'CONNECTING' | 'RECEIVING' | 'COMPLETE' | 'ERROR'>('IDLE');
   const [errorMessage, setErrorMessage] = useState('');
-  const [receivedFile, setReceivedFile] = useState<{ url: string; meta: SharedFileMetadata } | null>(null);
+  const [receivedFiles, setReceivedFiles] = useState<ReceivedFile[]>([]);
+  const [batchTotal, setBatchTotal] = useState(0);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  
+  // Track metadata by index before the actual file data arrives
+  const pendingMeta = useRef<Map<number, SharedFileMetadata>>(new Map());
 
   useEffect(() => {
     if (status === 'IDLE') {
@@ -51,19 +59,31 @@ const Receiver: React.FC<ReceiverProps> = ({ myPeerId, peer }) => {
 
   const initiateConnection = (data: QRData) => {
     const conn: DataConnection = peer.connect(data.hostId);
-    let meta: SharedFileMetadata | null = null;
 
     conn.on('open', () => setStatus('RECEIVING'));
 
-    conn.on('data', (data: any) => {
-      if (data.type === 'META') {
-        meta = data.payload;
-      } else if (data.type === 'FILE' && meta) {
-        const blob = new Blob([data.payload], { type: meta.type });
-        const url = URL.createObjectURL(blob);
-        setReceivedFile({ url, meta });
-        setStatus('COMPLETE');
-        conn.close();
+    conn.on('data', (payload: any) => {
+      if (payload.type === 'BATCH_START') {
+        setBatchTotal(payload.payload.count);
+      } else if (payload.type === 'META') {
+        const meta = payload.payload;
+        pendingMeta.current.set(meta.index, meta);
+      } else if (payload.type === 'FILE') {
+        const { index, data: fileData } = payload.payload;
+        const meta = pendingMeta.current.get(index);
+        
+        if (meta) {
+          const blob = new Blob([fileData], { type: meta.type });
+          const url = URL.createObjectURL(blob);
+          
+          setReceivedFiles(prev => {
+            const newList = [...prev, { url, meta }];
+            if (newList.length === batchTotal && batchTotal > 0) {
+              setStatus('COMPLETE');
+            }
+            return newList;
+          });
+        }
       }
     });
 
@@ -115,36 +135,55 @@ const Receiver: React.FC<ReceiverProps> = ({ myPeerId, peer }) => {
             <h3 className="text-2xl font-black text-white italic uppercase tracking-wider">
               {status === 'CONNECTING' ? 'Handshake' : 'Intercepting'}
             </h3>
-            <p className="text-zinc-500 text-sm font-bold mt-2 uppercase tracking-widest">Receiving Bits via P2P Mesh</p>
+            <p className="text-zinc-500 text-sm font-bold mt-2 uppercase tracking-widest">
+              {status === 'RECEIVING' ? `Beam Progress: ${receivedFiles.length} / ${batchTotal}` : 'Receiving Bits via P2P Mesh'}
+            </p>
           </div>
         </div>
       )}
 
-      {status === 'COMPLETE' && receivedFile && (
+      {status === 'COMPLETE' && receivedFiles.length > 0 && (
         <div className="glass p-10 rounded-[3rem] flex flex-col items-center text-center space-y-8 animate-in zoom-in-95 border-green-500">
           <div className="w-24 h-24 bg-green-500 text-black rounded-full flex items-center justify-center shadow-2xl shadow-green-500/20">
             <CheckCircle className="w-12 h-12" />
           </div>
+          
           <div className="space-y-4 w-full">
             <h3 className="text-3xl font-black text-white italic uppercase">Intercepted</h3>
-            <div className="flex flex-col items-center gap-2 p-6 bg-black rounded-[2rem] border border-zinc-800 w-full">
-              <FileIcon className="w-10 h-10 text-green-500 mb-2" />
-              <p className="text-lg font-bold text-white italic line-clamp-1">{receivedFile.meta.name}</p>
-              <div className="flex gap-2">
-                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-900 px-3 py-1 rounded-full">{formatSize(receivedFile.meta.size)}</span>
-                <span className="text-[10px] font-black text-green-500 uppercase tracking-widest bg-green-500/10 px-3 py-1 rounded-full">{receivedFile.meta.type.split('/')[1]?.toUpperCase() || 'DATA'}</span>
-              </div>
+            <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">{receivedFiles.length} items recovered</p>
+            
+            <div className="max-h-[300px] overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+              {receivedFiles.map((file, i) => (
+                <div key={i} className="flex flex-col gap-4 p-6 bg-black rounded-[2rem] border border-zinc-800 w-full text-left">
+                  <div className="flex items-center gap-3">
+                    <FileIcon className="w-8 h-8 text-green-500 flex-shrink-0" />
+                    <div className="overflow-hidden">
+                      <p className="text-sm font-bold text-white italic truncate">{file.meta.name}</p>
+                      <div className="flex gap-2">
+                        <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{formatSize(file.meta.size)}</span>
+                        <span className="text-[9px] font-black text-green-500 uppercase tracking-widest">{file.meta.type.split('/')[1]?.toUpperCase() || 'DATA'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <a
+                    href={file.url}
+                    download={file.meta.name}
+                    className="w-full bg-white hover:bg-zinc-200 text-black font-black py-3 rounded-xl flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all uppercase italic tracking-widest text-xs"
+                  >
+                    Save <Download className="w-4 h-4" />
+                  </a>
+                </div>
+              ))}
             </div>
           </div>
-          <a
-            href={receivedFile.url}
-            download={receivedFile.meta.name}
-            className="w-full bg-white hover:bg-zinc-200 text-black font-black py-5 rounded-[2rem] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all uppercase italic tracking-widest"
-          >
-            Save to Device <Download className="w-6 h-6" />
-          </a>
+          
           <button 
-            onClick={() => setStatus('IDLE')}
+            onClick={() => {
+              setReceivedFiles([]);
+              setBatchTotal(0);
+              pendingMeta.current.clear();
+              setStatus('IDLE');
+            }}
             className="text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-[0.3em]"
           >
             Ready for Next Beam
