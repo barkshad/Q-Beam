@@ -31,6 +31,24 @@ const Receiver: React.FC = () => {
       
       setReceivedFiles(data.files);
       setStatus('COMPLETE');
+
+      // Automatically trigger downloads for all files in the batch
+      data.files.forEach((file, index) => {
+        setTimeout(() => {
+          const link = document.createElement('a');
+          // Force download using Cloudinary's attachment flag (fl_attachment)
+          const downloadUrl = file.cloudUrl.includes('/upload/') 
+            ? file.cloudUrl.replace('/upload/', '/upload/fl_attachment/') 
+            : file.cloudUrl;
+          
+          link.href = downloadUrl;
+          link.download = file.name;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }, index * 1000); // 1-second interval to prevent browser blocking multiple simultaneous downloads
+      });
     } catch (e) {
       console.error("Invalid QR", e);
       setErrorMessage("The QR code doesn't seem to be a Q-Beam payload.");
@@ -72,6 +90,7 @@ const Receiver: React.FC = () => {
           
           <div className="w-full space-y-4">
             <h3 className="text-2xl font-black text-white italic uppercase">Beam Decoded</h3>
+            <p className="text-[10px] font-black text-green-500 uppercase tracking-widest">Saving files automatically...</p>
             <div className="max-h-[350px] overflow-y-auto space-y-3 pr-1 custom-scrollbar">
               {receivedFiles.map((file, i) => (
                 <div key={i} className="flex items-center gap-3 p-4 bg-zinc-900/60 rounded-2xl border border-zinc-800 text-left hover:border-zinc-600 transition-colors group">
@@ -83,11 +102,11 @@ const Receiver: React.FC = () => {
                     <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{formatSize(file.size)}</p>
                   </div>
                   <a
-                    href={file.cloudUrl}
+                    href={file.cloudUrl.includes('/upload/') ? file.cloudUrl.replace('/upload/', '/upload/fl_attachment/') : file.cloudUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-3 bg-white text-black rounded-xl hover:bg-green-500 hover:text-white transition-all shadow-sm"
-                    title="Download File"
+                    title="Manual Download"
                   >
                     <Download className="w-4 h-4" />
                   </a>
