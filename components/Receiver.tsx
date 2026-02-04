@@ -56,8 +56,12 @@ const Receiver: React.FC = () => {
 
   const stopScanner = async () => {
     if (scannerRef.current && scannerRef.current.isScanning) {
-      await scannerRef.current.stop();
-      scannerRef.current.clear();
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+      } catch (e) {
+        console.warn("Scanner stop error:", e);
+      }
       scannerRef.current = null;
     }
     setIsScanning(false);
@@ -75,15 +79,22 @@ const Receiver: React.FC = () => {
     if (!file) return;
 
     setStep('PROCESSING');
-    const scanner = new Html5Qrcode("qr-reader-target", false);
     
     try {
+      // Use the hidden target that is always present in the DOM
+      const scanner = new Html5Qrcode("qr-reader-target-hidden", false);
       const decodedText = await scanner.scanFile(file, true);
       onScanSuccess(decodedText);
+      
+      // Attempt to clear if instance was successful
+      try { scanner.clear(); } catch(e) {}
     } catch (err) {
       console.error("QR decoding failed", err);
-      setErrorMessage("No QR code found in this image.");
+      setErrorMessage("No valid QR code detected in this image. Please try a clearer photo.");
       setStep('ERROR');
+    } finally {
+      // Reset input value so same file can be selected again if needed
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -273,8 +284,11 @@ const Receiver: React.FC = () => {
         </div>
       )}
 
-      {/* Hidden container for Html5Qrcode file scan requirement */}
-      <div id="qr-reader-target-hidden" className="hidden" />
+      {/* Persistent hidden container for scanFile calls */}
+      <div 
+        id="qr-reader-target-hidden" 
+        style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', visibility: 'hidden' }} 
+      />
     </div>
   );
 };
