@@ -1,0 +1,17 @@
+{
+  "name": "Q-Beam Cloud Share",
+  "short_name": "Q-Beam",
+  "description": "Instant cloud-based file sharing with AI analysis.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#22c55e",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3252/3252924.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
