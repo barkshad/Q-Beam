@@ -13,11 +13,9 @@ const App: React.FC = () => {
   const peerInstance = useRef<Peer | null>(null);
 
   useEffect(() => {
-    // Initialize PeerJS on mount
     const peer = new Peer();
     
     peer.on('open', (id) => {
-      console.log('Peer connected with ID:', id);
       setMyPeerId(id);
     });
 
@@ -39,23 +37,23 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen text-slate-200 flex flex-col">
+    <div className="min-h-screen bg-black text-white flex flex-col selection:bg-green-500/30">
       {/* Navbar */}
-      <header className="px-6 py-4 flex justify-between items-center glass sticky top-0 z-50">
+      <header className="px-6 py-5 flex justify-between items-center glass sticky top-0 z-50">
         <div 
           className="flex items-center gap-3 cursor-pointer group"
           onClick={handleReset}
         >
-          <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:scale-110 transition-transform">
-            <Wifi className="text-white w-6 h-6" />
+          <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-white/5 group-hover:bg-green-500 transition-all duration-300">
+            <Wifi className="text-black w-6 h-6" />
           </div>
-          <span className="text-2xl font-bold tracking-tight text-white">Q-Beam</span>
+          <span className="text-2xl font-bold tracking-tight text-white uppercase italic">Q-Beam</span>
         </div>
 
         {mode !== 'HOME' && (
           <button 
             onClick={handleReset}
-            className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
+            className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/60 hover:text-white"
           >
             <X className="w-6 h-6" />
           </button>
@@ -74,15 +72,15 @@ const App: React.FC = () => {
       </main>
 
       {/* Status Footer */}
-      <footer className="p-4 bg-slate-900/40 border-t border-slate-800 text-center text-[10px] text-slate-500 flex items-center justify-center gap-4">
+      <footer className="p-4 bg-zinc-900/40 border-t border-zinc-800 text-center text-[10px] text-zinc-500 flex items-center justify-center gap-4">
         <div className="flex items-center gap-1.5">
-          <div className={`w-2 h-2 rounded-full ${myPeerId ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}`} />
-          <span>{myPeerId ? `Network Active: ${myPeerId.slice(0, 8)}...` : 'Connecting to Mesh...'}</span>
+          <div className={`w-2 h-2 rounded-full ${myPeerId ? 'bg-green-500 animate-pulse' : 'bg-zinc-600'}`} />
+          <span className="font-medium tracking-wide">{myPeerId ? `NODE: ${myPeerId.slice(0, 8).toUpperCase()}` : 'INITIALIZING...'}</span>
         </div>
-        <div className="h-3 w-[1px] bg-slate-800" />
+        <div className="h-3 w-[1px] bg-zinc-800" />
         <div className="flex items-center gap-1">
-          <Info className="w-3 h-3" />
-          <span>P2P Enabled</span>
+          <Info className="w-3 h-3 text-green-500" />
+          <span className="uppercase">P2P Secure Mesh</span>
         </div>
       </footer>
     </div>

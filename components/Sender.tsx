@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { File as FileIcon, ArrowRight, Share2, Sparkles, Loader2, Wifi, Cloud } from 'lucide-react';
+import { File as FileIcon, ArrowRight, Sparkles, Loader2, Wifi, Cloud } from 'lucide-react';
 import Peer from 'peerjs';
 import { TransferType, SharedFileMetadata, QRData } from '../types';
 import { analyzeFileTransfer } from '../services/gemini';
@@ -35,11 +35,9 @@ const Sender: React.FC<SenderProps> = ({ myPeerId, peer }) => {
   const generateShare = () => {
     if (!file) return;
 
-    // Set up Peer listener for incoming connection
     peer.on('connection', (conn) => {
       setIsConnected(true);
       conn.on('open', () => {
-        // Step 1: Send metadata
         const meta: SharedFileMetadata = {
           name: file.name,
           size: file.size,
@@ -47,7 +45,6 @@ const Sender: React.FC<SenderProps> = ({ myPeerId, peer }) => {
         };
         conn.send({ type: 'META', payload: meta });
 
-        // Step 2: Send file as chunks (basic logic)
         const reader = new FileReader();
         reader.onload = (e) => {
           const buffer = e.target?.result;
@@ -58,11 +55,7 @@ const Sender: React.FC<SenderProps> = ({ myPeerId, peer }) => {
         };
         reader.readAsArrayBuffer(file);
       });
-
-      conn.on('error', (err) => {
-        console.error("Connection error:", err);
-        setIsConnected(false);
-      });
+      conn.on('error', () => setIsConnected(false));
     });
 
     const qrData: QRData = {
@@ -87,45 +80,40 @@ const Sender: React.FC<SenderProps> = ({ myPeerId, peer }) => {
     <div className="w-full flex flex-col gap-6 animate-in zoom-in-95 duration-300">
       {step === 1 ? (
         <>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-white">Select File</h2>
-            <p className="text-slate-400 text-sm">Large files use Direct P2P. Media can use Cloud.</p>
+          <div className="space-y-1">
+            <h2 className="text-3xl font-black text-white italic uppercase">Select</h2>
+            <p className="text-zinc-500 text-sm font-medium">Prepare your data for transmission.</p>
           </div>
 
           <div className="relative group">
-            <input 
-              type="file" 
-              onChange={handleFileChange} 
-              className="hidden" 
-              id="file-input" 
-            />
+            <input type="file" onChange={handleFileChange} className="hidden" id="file-input" />
             <label 
               htmlFor="file-input"
-              className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-slate-700 rounded-3xl cursor-pointer hover:bg-slate-900/50 hover:border-cyan-500/50 transition-all duration-300 bg-slate-900/20"
+              className={`flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-[2.5rem] cursor-pointer transition-all duration-300 ${file ? 'border-green-500 bg-green-500/5' : 'border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900 hover:border-zinc-700'}`}
             >
-              <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                <FileIcon className={`w-10 h-10 ${file ? 'text-cyan-400' : 'text-slate-500'}`} />
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${file ? 'bg-green-500 text-black' : 'bg-zinc-800 text-zinc-500'}`}>
+                <FileIcon className="w-10 h-10" />
               </div>
-              <p className="text-lg font-medium text-white text-center px-4 overflow-hidden text-ellipsis w-full">
-                {file ? file.name : 'Tap to pick file'}
+              <p className="text-lg font-bold text-white text-center px-4 overflow-hidden text-ellipsis w-full italic">
+                {file ? file.name : 'Choose local file'}
               </p>
-              <p className="text-xs text-slate-500 mt-2">
-                {file ? formatSize(file.size) : 'Documents, Images, Archives...'}
+              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mt-2">
+                {file ? formatSize(file.size) : 'Max 2GB recommended'}
               </p>
             </label>
           </div>
 
           {file && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="space-y-5 animate-in fade-in slide-in-from-top-4 duration-500">
               {/* AI Analysis */}
-              <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex gap-3 items-start">
-                <div className="bg-cyan-500/10 p-2 rounded-lg text-cyan-400">
-                  {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-3xl flex gap-4 items-center">
+                <div className="bg-green-500/10 p-3 rounded-2xl text-green-500">
+                  {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
                 </div>
                 <div className="flex-1">
-                  <p className="text-[10px] font-bold text-cyan-500 uppercase tracking-widest mb-1">Beam Analyst</p>
-                  <p className="text-xs text-slate-300 leading-relaxed italic">
-                    {isAnalyzing ? "Analyzing file metadata..." : `"${aiTip}"`}
+                  <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-1">Beam AI</p>
+                  <p className="text-sm text-zinc-300 font-medium leading-relaxed italic">
+                    {isAnalyzing ? "Scanning..." : `"${aiTip}"`}
                   </p>
                 </div>
               </div>
@@ -134,79 +122,60 @@ const Sender: React.FC<SenderProps> = ({ myPeerId, peer }) => {
               <div className="grid grid-cols-2 gap-4">
                 <button 
                   onClick={() => setTransferMode(TransferType.P2P)}
-                  className={`p-4 rounded-2xl border text-left transition-all ${transferMode === TransferType.P2P ? 'border-cyan-500 bg-cyan-500/10' : 'border-slate-800 bg-slate-900/50'}`}
+                  className={`p-5 rounded-3xl border text-left transition-all ${transferMode === TransferType.P2P ? 'border-green-500 bg-green-500/10' : 'border-zinc-800 bg-zinc-900/50'}`}
                 >
-                  <Wifi className="w-5 h-5 text-cyan-400 mb-2" />
-                  <div className="text-sm font-bold text-white">Direct P2P</div>
-                  <div className="text-[10px] text-slate-500">End-to-End, any size</div>
+                  <Wifi className="w-6 h-6 text-green-500 mb-2" />
+                  <div className="text-sm font-bold text-white uppercase italic">Direct</div>
+                  <div className="text-[10px] text-zinc-500 font-black">Unlimited</div>
                 </button>
                 <button 
                   onClick={() => setTransferMode(TransferType.CLOUD)}
-                  className={`p-4 rounded-2xl border text-left transition-all ${transferMode === TransferType.CLOUD ? 'border-blue-500 bg-blue-500/10' : 'border-slate-800 bg-slate-900/50'}`}
+                  className={`p-5 rounded-3xl border text-left transition-all ${transferMode === TransferType.CLOUD ? 'border-white bg-white/5' : 'border-zinc-800 bg-zinc-900/50'}`}
                 >
-                  <Cloud className="w-5 h-5 text-blue-400 mb-2" />
-                  <div className="text-sm font-bold text-white">Cloud Preview</div>
-                  <div className="text-[10px] text-slate-500">Fast cache previews</div>
+                  <Cloud className="w-6 h-6 text-white mb-2" />
+                  <div className="text-sm font-bold text-white uppercase italic">Cloud</div>
+                  <div className="text-[10px] text-zinc-500 font-black">Fast Preview</div>
                 </button>
               </div>
 
               <button
                 onClick={generateShare}
-                className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-cyan-900/20 active:scale-95 transition-all"
+                className="w-full bg-white hover:bg-zinc-200 text-black font-black py-5 rounded-[2rem] flex items-center justify-center gap-2 shadow-xl shadow-white/5 active:scale-[0.98] transition-all uppercase italic tracking-wider"
               >
-                Generate Share Beam <ArrowRight className="w-5 h-5" />
+                Launch Beam <ArrowRight className="w-5 h-5" />
               </button>
             </div>
           )}
         </>
       ) : (
-        <div className="flex flex-col items-center gap-8 py-4">
+        <div className="flex flex-col items-center gap-10 py-6">
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-bold text-white">Scan to Connect</h2>
-            <p className="text-slate-400 text-sm">Keep this screen open until the beam finishes.</p>
+            <h2 className="text-3xl font-black text-white italic uppercase">Ready</h2>
+            <p className="text-zinc-500 text-sm font-medium">Recipient must scan this code.</p>
           </div>
 
-          <div className="relative p-6 bg-white rounded-3xl shadow-2xl shadow-cyan-500/20 border-4 border-slate-800">
-            <QRCodeSVG 
-              value={qrPayload} 
-              size={240} 
-              level="H"
-              includeMargin={true}
-              imageSettings={{
-                src: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
-                x: undefined,
-                y: undefined,
-                height: 40,
-                width: 40,
-                excavate: true,
-              }}
-            />
+          <div className="relative p-8 bg-white rounded-[3rem] shadow-2xl shadow-green-500/20">
+            <QRCodeSVG value={qrPayload} size={220} level="M" />
             {isConnected && (
-              <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center rounded-2xl animate-in fade-in">
-                <div className="w-16 h-16 bg-cyan-500/20 rounded-full flex items-center justify-center mb-4">
-                  <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
+              <div className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center rounded-[3rem] animate-in fade-in">
+                <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mb-5">
+                  <Loader2 className="w-10 h-10 text-green-500 animate-spin" />
                 </div>
-                <p className="text-white font-bold">Transferring...</p>
-                <p className="text-xs text-slate-400 mt-1">{transferProgress}% complete</p>
-                {transferProgress === 100 && (
-                  <div className="mt-4 text-green-400 flex items-center gap-2 font-bold animate-bounce">
-                    Beam Finished!
-                  </div>
-                )}
+                <p className="text-white font-black italic uppercase tracking-widest">Streaming...</p>
+                <div className="w-2/3 h-1.5 bg-zinc-800 rounded-full mt-4 overflow-hidden">
+                   <div className="h-full bg-green-500 transition-all duration-300" style={{ width: `${transferProgress}%` }} />
+                </div>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 px-6 py-3 rounded-full text-xs font-medium text-slate-300">
-            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-amber-500 animate-pulse'}`} />
-            {isConnected ? 'Device Connected' : 'Waiting for Receiver...'}
+          <div className={`flex items-center gap-3 px-8 py-4 rounded-full text-xs font-black uppercase tracking-widest border ${isConnected ? 'bg-green-500 text-black border-transparent' : 'bg-zinc-900 text-zinc-300 border-zinc-800'}`}>
+            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-black animate-pulse' : 'bg-green-500 animate-pulse'}`} />
+            {isConnected ? 'Sync Active' : 'Waiting for link...'}
           </div>
 
-          <button 
-            onClick={() => { setStep(1); setIsConnected(false); }}
-            className="text-slate-500 hover:text-white text-sm font-medium flex items-center gap-2"
-          >
-            Cancel and reset
+          <button onClick={() => setStep(1)} className="text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-widest underline underline-offset-4">
+            Terminate Session
           </button>
         </div>
       )}
