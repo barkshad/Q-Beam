@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cloud, X, Info, Download } from 'lucide-react';
+import { Cloud, X, Info, Download, Share2, Inbox } from 'lucide-react';
 import Home from './components/Home';
 import Sender from './components/Sender';
 import Receiver from './components/Receiver';
@@ -76,6 +76,23 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {mode !== 'HOME' && (
+            <div className="flex items-center bg-zinc-900 rounded-full p-1 border border-zinc-800 mr-2">
+              <button 
+                onClick={() => setMode('SENDER')}
+                className={`p-2 rounded-full transition-all ${mode === 'SENDER' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white'}`}
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => setMode('RECEIVER')}
+                className={`p-2 rounded-full transition-all ${mode === 'RECEIVER' ? 'bg-white text-black' : 'text-zinc-500 hover:text-white'}`}
+              >
+                <Inbox className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {isInstallable && (
             <button 
               onClick={handleInstallClick}
@@ -99,10 +116,12 @@ const App: React.FC = () => {
 
       {/* Main Content - Fully Responsive Container */}
       <main className="flex-1 flex flex-col items-center justify-center w-full px-4 py-8 sm:px-6 lg:px-8 overflow-x-hidden">
-        <div className="w-full max-w-lg mx-auto">
+        <div className="w-full max-w-lg mx-auto h-full flex flex-col justify-center">
           {mode === 'HOME' && <Home onSelectMode={setMode} />}
-          {mode === 'SENDER' && <Sender />}
-          {mode === 'RECEIVER' && <Receiver />}
+          
+          {/* Use hidden attribute instead of conditional rendering to persist state/processes */}
+          <div className={mode === 'SENDER' ? 'block' : 'hidden'}><Sender /></div>
+          <div className={mode === 'RECEIVER' ? 'block' : 'hidden'}><Receiver /></div>
         </div>
       </main>
 
