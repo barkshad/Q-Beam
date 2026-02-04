@@ -7,6 +7,10 @@
   <meta name="theme-color" content="#000000">
   <link rel="manifest" href="/manifest.json">
   
+  <!-- Standard Favicon -->
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/595/595067.png">
+  <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/512/595/595067.png">
+
   <!-- Apple PWA support -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -70,6 +74,10 @@
     }
     .delay-reveal-1 { animation-delay: 0.1s; }
     .delay-reveal-2 { animation-delay: 0.3s; }
+    @keyframes loading {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
   </style>
 <script type="importmap">
 {
