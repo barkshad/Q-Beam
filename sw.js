@@ -1,10 +1,10 @@
 
-const CACHE_NAME = 'q-beam-v2';
+const CACHE_NAME = 'q-beam-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  'https://cdn-icons-png.flaticon.com/512/595/595067.png'
+  'https://cdn-icons-png.flaticon.com/512/10433/10433048.png'
 ];
 
 self.addEventListener('install', (event) => {
