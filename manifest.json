@@ -1,3 +1,4 @@
+
 {
   "name": "Q-Beam Cloud Share",
   "short_name": "Q-Beam",
@@ -8,7 +9,7 @@
   "theme_color": "#22c55e",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3252/3252924.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/595/595067.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

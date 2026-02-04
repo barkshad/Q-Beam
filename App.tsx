@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cloud, X, Info, Download, Share2, Inbox, Smartphone } from 'lucide-react';
+import { Zap, X, Info, Download, Share2, Inbox, Smartphone } from 'lucide-react';
 import Home from './components/Home';
 import Sender from './components/Sender';
 import Receiver from './components/Receiver';
@@ -65,7 +65,7 @@ const App: React.FC = () => {
       <div className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center animate-in fade-in duration-500 px-6">
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center shadow-2xl shadow-green-500/20 animate-splash">
-            <Cloud className="text-black w-12 h-12" />
+            <Zap className="text-black w-12 h-12 fill-black" />
           </div>
           <h1 className="mt-8 text-4xl font-black text-white italic tracking-tighter uppercase">Q-Beam</h1>
           <div className="mt-4 w-12 h-1 bg-zinc-800 rounded-full overflow-hidden">
@@ -107,7 +107,7 @@ const App: React.FC = () => {
           onClick={handleReset}
         >
           <div className="w-10 h-10 sm:w-11 sm:h-11 bg-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-white/5 group-hover:bg-green-500 transition-all duration-300">
-            <Cloud className="text-black w-5 h-5 sm:w-6 sm:h-6" />
+            <Zap className="text-black w-5 h-5 sm:w-6 sm:h-6 fill-black" />
           </div>
           <span className="text-xl sm:text-2xl font-bold tracking-tight text-white uppercase italic">Q-Beam</span>
         </div>
