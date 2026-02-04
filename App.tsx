@@ -20,13 +20,18 @@ const App: React.FC = () => {
 
   if (showSplash) {
     return (
-      <div className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center animate-in fade-in duration-500">
-        <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center shadow-2xl shadow-green-500/20 animate-splash">
-          <Cloud className="text-black w-12 h-12" />
+      <div className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center animate-in fade-in duration-500 px-6">
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center shadow-2xl shadow-green-500/20 animate-splash">
+            <Cloud className="text-black w-12 h-12" />
+          </div>
+          <h1 className="mt-8 text-4xl font-black text-white italic tracking-tighter uppercase">Q-Beam</h1>
+          <div className="mt-4 w-12 h-1 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="h-full bg-green-500 animate-[loading_2s_ease-in-out_infinite]" style={{ width: '100%' }}></div>
+          </div>
         </div>
-        <h1 className="mt-8 text-4xl font-black text-white italic tracking-tighter uppercase">Q-Beam</h1>
-        <div className="mt-4 w-12 h-1 bg-zinc-800 rounded-full overflow-hidden">
-          <div className="h-full bg-green-500 animate-[loading_2s_ease-in-out_infinite]" style={{ width: '100%' }}></div>
+        <div className="pb-10">
+          <span className="uppercase tracking-[0.2em] font-black text-[10px] text-zinc-600">build by shadrack v1.0</span>
         </div>
       </div>
     );
