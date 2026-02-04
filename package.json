@@ -1,26 +1,28 @@
+
 {
-  "name": "q-beam:-hybrid-file-share",
+  "name": "q-beam",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "peerjs": "^1.5.5",
+    "@google/genai": "^1.39.0",
     "html5-qrcode": "^2.3.8",
+    "lucide-react": "^0.563.0",
+    "peerjs": "^1.5.5",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.4",
-    "lucide-react": "^0.563.0",
-    "react-dom": "^19.2.4",
-    "@google/genai": "^1.39.0"
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@types/react": "^19.2.4",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7"
   }
 }
