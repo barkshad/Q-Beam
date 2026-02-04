@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { Camera, CheckCircle, Download, Loader2, AlertCircle, File as FileIcon, Wifi } from 'lucide-react';
+import { Camera, CheckCircle, Download, Loader2, AlertCircle, File as FileIcon, Wifi, Cloud } from 'lucide-react';
 import Peer, { DataConnection } from 'peerjs';
-import { QRData, SharedFileMetadata } from '../types';
+import { QRData, SharedFileMetadata, TransferType } from '../types';
 
 interface ReceiverProps {
   myPeerId: string;
@@ -22,8 +21,6 @@ const Receiver: React.FC<ReceiverProps> = ({ myPeerId, peer }) => {
   const [receivedFiles, setReceivedFiles] = useState<ReceivedFile[]>([]);
   const [batchTotal, setBatchTotal] = useState(0);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
-  
-  // Track metadata by index before the actual file data arrives
   const pendingMeta = useRef<Map<number, SharedFileMetadata>>(new Map());
 
   useEffect(() => {
@@ -33,15 +30,11 @@ const Receiver: React.FC<ReceiverProps> = ({ myPeerId, peer }) => {
         { fps: 15, qrbox: { width: 250, height: 250 } },
         false
       );
-
       scanner.render(onScanSuccess, () => {});
       scannerRef.current = scanner;
     }
-
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
-      }
+      if (scannerRef.current) scannerRef.current.clear().catch(() => {});
     };
   }, [status]);
 
@@ -49,47 +42,55 @@ const Receiver: React.FC<ReceiverProps> = ({ myPeerId, peer }) => {
     try {
       const data: QRData = JSON.parse(decodedText);
       setScanResult(data);
-      setStatus('CONNECTING');
       if (scannerRef.current) scannerRef.current.clear();
-      initiateConnection(data);
+      
+      if (data.transferType === TransferType.CLOUD && data.meta) {
+        setStatus('RECEIVING');
+        processCloudBeam(data);
+      } else {
+        setStatus('CONNECTING');
+        initiateConnection(data);
+      }
     } catch (e) {
       console.error("Invalid QR", e);
     }
   };
 
+  const processCloudBeam = (data: QRData) => {
+    setBatchTotal(data.meta.length);
+    const files: ReceivedFile[] = data.meta.map(m => ({
+      url: m.cloudUrl || '',
+      meta: m
+    }));
+    setReceivedFiles(files);
+    setStatus('COMPLETE');
+  };
+
   const initiateConnection = (data: QRData) => {
     const conn: DataConnection = peer.connect(data.hostId);
-
     conn.on('open', () => setStatus('RECEIVING'));
-
     conn.on('data', (payload: any) => {
       if (payload.type === 'BATCH_START') {
         setBatchTotal(payload.payload.count);
       } else if (payload.type === 'META') {
-        const meta = payload.payload;
-        pendingMeta.current.set(meta.index, meta);
+        pendingMeta.current.set(payload.payload.index, payload.payload);
       } else if (payload.type === 'FILE') {
         const { index, data: fileData } = payload.payload;
         const meta = pendingMeta.current.get(index);
-        
         if (meta) {
           const blob = new Blob([fileData], { type: meta.type });
           const url = URL.createObjectURL(blob);
-          
           setReceivedFiles(prev => {
             const newList = [...prev, { url, meta }];
-            if (newList.length === batchTotal && batchTotal > 0) {
-              setStatus('COMPLETE');
-            }
+            if (newList.length === batchTotal && batchTotal > 0) setStatus('COMPLETE');
             return newList;
           });
         }
       }
     });
-
     conn.on('error', () => {
       setStatus('ERROR');
-      setErrorMessage("Beam interrupted. Check network.");
+      setErrorMessage("Beam interrupted. Check peer connectivity.");
     });
   };
 
@@ -128,15 +129,17 @@ const Receiver: React.FC<ReceiverProps> = ({ myPeerId, peer }) => {
                <div className="w-20 h-20 border-[6px] border-green-500 border-t-transparent rounded-full animate-spin" />
             </div>
             <div className="absolute inset-0 flex items-center justify-center">
-               <Wifi className="w-8 h-8 text-white" />
+               {scanResult?.transferType === TransferType.CLOUD ? <Cloud className="w-8 h-8 text-white" /> : <Wifi className="w-8 h-8 text-white" />}
             </div>
           </div>
           <div>
             <h3 className="text-2xl font-black text-white italic uppercase tracking-wider">
               {status === 'CONNECTING' ? 'Handshake' : 'Intercepting'}
             </h3>
-            <p className="text-zinc-500 text-sm font-bold mt-2 uppercase tracking-widest">
-              {status === 'RECEIVING' ? `Beam Progress: ${receivedFiles.length} / ${batchTotal}` : 'Receiving Bits via P2P Mesh'}
+            <p className="text-zinc-500 text-sm font-bold mt-2 uppercase tracking-widest leading-relaxed">
+              {status === 'RECEIVING' 
+                ? `Recovering segment ${receivedFiles.length + 1} of ${batchTotal}` 
+                : scanResult?.transferType === TransferType.CLOUD ? 'Retrieving from Secure Cloud' : 'Syncing via P2P Mesh'}
             </p>
           </div>
         </div>
@@ -168,6 +171,8 @@ const Receiver: React.FC<ReceiverProps> = ({ myPeerId, peer }) => {
                   <a
                     href={file.url}
                     download={file.meta.name}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="w-full bg-white hover:bg-zinc-200 text-black font-black py-3 rounded-xl flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all uppercase italic tracking-widest text-xs"
                   >
                     Save <Download className="w-4 h-4" />

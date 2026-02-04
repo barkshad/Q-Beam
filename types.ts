@@ -1,4 +1,3 @@
-
 export type AppMode = 'HOME' | 'SENDER' | 'RECEIVER';
 
 export enum TransferType {
@@ -10,16 +9,17 @@ export interface SharedFileMetadata {
   name: string;
   size: number;
   type: string;
+  cloudUrl?: string; // Added for Cloudinary integration
+  index?: number;    // Added for batch tracking
 }
 
 export interface QRData {
   hostId: string;
   transferType: TransferType;
   meta: SharedFileMetadata[];
-  cloudUrl?: string;
 }
 
 export interface PeerMessage {
-  type: 'META' | 'FILE' | 'CHUNK';
+  type: 'BATCH_START' | 'META' | 'FILE' | 'CHUNK';
   payload: any;
 }

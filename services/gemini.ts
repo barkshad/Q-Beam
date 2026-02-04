@@ -1,7 +1,7 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Fix: Strictly follow the initialization guidelines for the GoogleGenAI client
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const analyzeFileTransfer = async (fileName: string, fileSize: number, fileType: string) => {
   try {
