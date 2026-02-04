@@ -1,9 +1,18 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Fix: Strictly follow the initialization guidelines for the GoogleGenAI client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialization with a fallback check to prevent total app failure if the key isn't provided yet
+const getAiClient = () => {
+  const apiKey = process.env.API_KEY;
+  return new GoogleGenAI({ apiKey: apiKey || 'temporary-placeholder' });
+};
+
+const ai = getAiClient();
 
 export const analyzeFileTransfer = async (fileName: string, fileSize: number, fileType: string) => {
+  if (!process.env.API_KEY) {
+    return "Ready to beam your file securely!";
+  }
+
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
