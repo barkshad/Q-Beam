@@ -10,9 +10,9 @@ const Home: React.FC<HomeProps> = ({ onSelectMode }) => {
   return (
     <div className="flex flex-col items-center justify-center h-full animate-in fade-in slide-in-from-bottom-8 duration-700">
       <div className="text-center mb-12 space-y-4">
-        <h1 className="text-5xl sm:text-6xl font-black text-white leading-tight uppercase italic">
-          Cloud Beam.<br />
-          <span className="gradient-text">Zero Wait.</span>
+        <h1 className="text-5xl sm:text-6xl font-black text-white leading-tight uppercase italic overflow-hidden">
+          <div className="animate-reveal delay-reveal-1">Cloud Beam.</div>
+          <span className="gradient-text inline-block animate-reveal delay-reveal-2">Zero Wait.</span>
         </h1>
         <p className="text-zinc-400 text-base max-w-xs mx-auto font-medium">
           Upload instantly, share via QR, and analyze with Gemini AI.

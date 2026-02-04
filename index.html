@@ -53,6 +53,16 @@
     .animate-splash {
       animation: splash-pulse 2s infinite ease-in-out;
     }
+    @keyframes reveal-up {
+      0% { transform: translateY(30px); opacity: 0; filter: blur(10px); }
+      100% { transform: translateY(0); opacity: 1; filter: blur(0); }
+    }
+    .animate-reveal {
+      animation: reveal-up 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      opacity: 0;
+    }
+    .delay-reveal-1 { animation-delay: 0.1s; }
+    .delay-reveal-2 { animation-delay: 0.3s; }
   </style>
 <script type="importmap">
 {
