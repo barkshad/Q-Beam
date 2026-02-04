@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cloud, X, Info } from 'lucide-react';
+import { Cloud, X, Info, Download } from 'lucide-react';
 import Home from './components/Home';
 import Sender from './components/Sender';
 import Receiver from './components/Receiver';
@@ -8,11 +8,35 @@ import { AppMode } from './types';
 const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>('HOME');
   const [showSplash, setShowSplash] = useState(true);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 2500);
-    return () => clearTimeout(timer);
+    
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsInstallable(false);
+    }
+    setDeferredPrompt(null);
+  };
 
   const handleReset = () => {
     setMode('HOME');
@@ -51,14 +75,26 @@ const App: React.FC = () => {
           <span className="text-xl sm:text-2xl font-bold tracking-tight text-white uppercase italic">Q-Beam</span>
         </div>
 
-        {mode !== 'HOME' && (
-          <button 
-            onClick={handleReset}
-            className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/60 hover:text-white"
-          >
-            <X className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isInstallable && (
+            <button 
+              onClick={handleInstallClick}
+              className="flex items-center gap-2 px-3 py-1.5 bg-green-500 text-black text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-white transition-all shadow-lg shadow-green-500/20"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Install App</span>
+            </button>
+          )}
+
+          {mode !== 'HOME' && (
+            <button 
+              onClick={handleReset}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors text-white/60 hover:text-white"
+            >
+              <X className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Main Content - Fully Responsive Container */}
