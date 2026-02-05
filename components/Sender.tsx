@@ -15,6 +15,7 @@ const Sender: React.FC = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Use the 'auto' resource type endpoint for maximum compatibility
   const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/ds2mbrzcn/auto/upload";
   const UPLOAD_PRESET = "real_unsigned";
 
@@ -28,38 +29,41 @@ const Sender: React.FC = () => {
       setError(null);
       setFiles(prev => [...prev, ...selected]);
       
-      // AI analysis is secondary and shouldn't block the UI or cause crashes
-      try {
-        analyzeFileTransfer(
-          selected.length > 1 ? `${selected.length} files batch` : selected[0].name,
-          selected.reduce((acc, f) => acc + f.size, 0),
-          selected[0].type
-        ).then(tip => setAiTip(tip || ''));
-      } catch (err) {
-        console.warn("AI Tip generation skipped:", err);
-      }
+      // Call AI analysis without blocking the main UI thread
+      analyzeFileTransfer(
+        selected.length > 1 ? `${selected.length} files batch` : selected[0].name,
+        selected.reduce((acc, f) => acc + f.size, 0),
+        selected[0].type
+      ).then(tip => setAiTip(tip || ''))
+       .catch(err => console.warn("AI metadata analysis skipped:", err));
     }
   };
 
   const startUpload = async (e: React.MouseEvent) => {
+    // Explicitly prevent any default form/button behaviors
     e.preventDefault();
     if (files.length === 0 || isUploading) return;
     
     setIsUploading(true);
     setProgress(0);
     setError(null);
-    setUploadStatus('Syncing with cloud...');
+    setUploadStatus('Connecting to Beam Cloud...');
     
     try {
       const uploadedFiles: SharedFileMetadata[] = [];
       for (let i = 0; i < files.length; i++) {
         const currentFile = files[i];
-        setUploadStatus(`Beaming: ${currentFile.name}`);
+        setUploadStatus(`Uploading: ${currentFile.name}`);
         
         const formData = new FormData();
         formData.append("file", currentFile);
         formData.append("upload_preset", UPLOAD_PRESET);
-        formData.append("resource_type", "auto"); // Critical for audio files
+        
+        /** 
+         * CRITICAL: Cloudinary treats audio as "video" or "auto". 
+         * Using "auto" ensures that songs of any size are processed correctly.
+         */
+        formData.append("resource_type", "auto");
         
         const response = await fetch(CLOUDINARY_URL, { 
           method: "POST", 
@@ -68,7 +72,7 @@ const Sender: React.FC = () => {
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error?.message || "Cloudinary upload failed");
+          throw new Error(errorData.error?.message || "Cloud upload failed");
         }
         
         const data = await response.json();
@@ -83,7 +87,7 @@ const Sender: React.FC = () => {
         setProgress(Math.round(((i + 1) / files.length) * 100));
       }
 
-      setUploadStatus('Generating QR Handshake...');
+      setUploadStatus('Finalizing Beam Handshake...');
       const qrData: QRData = {
         version: "1.0",
         files: uploadedFiles,
@@ -91,8 +95,8 @@ const Sender: React.FC = () => {
       };
       setQrPayload(JSON.stringify(qrData));
     } catch (err: any) {
-      console.error("Upload Error:", err);
-      setError(err.message || "Beam failed. Try smaller files or check connection.");
+      console.error("Beam Upload Error:", err);
+      setError(err.message || "Beam failed. Check song size or network connection.");
     } finally {
       setIsUploading(false);
       setUploadStatus('');
@@ -140,16 +144,16 @@ const Sender: React.FC = () => {
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mb-6 bg-zinc-800 text-zinc-500 group-hover:text-green-500 transition-colors">
               <Music className="w-8 h-8 sm:w-10 sm:h-10" />
             </div>
-            <p className="text-base sm:text-lg font-bold text-white text-center px-4 italic leading-tight">Drop songs or files here</p>
-            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mt-2">Any format, any size</p>
+            <p className="text-base sm:text-lg font-bold text-white text-center px-4 italic leading-tight">Choose songs or files</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mt-2">Any audio format supported</p>
           </label>
         ) : (
           <div className="space-y-6">
             <div className="space-y-3">
               <div className="flex items-center justify-between px-2">
-                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Selected Media</span>
+                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Active Batch</span>
                 <label className="text-[10px] font-black text-green-500 uppercase tracking-widest cursor-pointer hover:underline flex items-center gap-1">
-                  <Plus className="w-3 h-3" /> Add More
+                  <Plus className="w-3 h-3" /> More Media
                   <input 
                     type="file" 
                     onChange={handleFileChange} 
@@ -194,7 +198,7 @@ const Sender: React.FC = () => {
             {error && (
               <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-2xl flex gap-3 items-center animate-in slide-in-from-top duration-300">
                 <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
-                <p className="text-[11px] text-rose-200 font-bold uppercase italic">{error}</p>
+                <p className="text-[11px] text-rose-200 font-bold uppercase italic leading-tight">{error}</p>
               </div>
             )}
 
@@ -216,14 +220,14 @@ const Sender: React.FC = () => {
               >
                 {isUploading ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span className="z-10 font-black">Launching Beam: {progress}%</span>
+                    <Loader2 className="w-5 h-5 animate-spin z-10" />
+                    <span className="z-10 font-black tracking-tight">Beaming Song: {progress}%</span>
                     <div className="absolute bottom-0 left-0 h-full bg-green-500/30 transition-all duration-300 pointer-events-none" style={{ width: `${progress}%` }} />
                   </>
                 ) : (
                   <>
                     <Share2 className="w-5 h-5" />
-                    <span>Initiate Transfer</span>
+                    <span>Launch Beam</span>
                   </>
                 )}
               </button>
@@ -244,9 +248,9 @@ const Sender: React.FC = () => {
           <div className="text-center space-y-2">
             <div className="flex items-center justify-center gap-2 text-green-500">
               <Check className="w-5 h-5" />
-              <span className="text-sm font-black uppercase italic">Universal Beam Active</span>
+              <span className="text-sm font-black uppercase italic">Handshake Ready</span>
             </div>
-            <p className="text-zinc-500 text-xs font-medium">Scan this QR on any device to receive media.</p>
+            <p className="text-zinc-500 text-xs font-medium">Scan this QR to receive your songs instantly.</p>
           </div>
 
           <button

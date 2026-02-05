@@ -2,20 +2,22 @@ import { GoogleGenAI } from "@google/genai";
 
 /**
  * Analyzes file metadata to provide AI-powered tips.
- * Initialized lazily to prevent app-level crashes if the API key is missing during boot.
+ * This service is initialized lazily to prevent top-level crashes 
+ * that result in "Blank Black Screens" during app deployment.
  */
 export const analyzeFileTransfer = async (fileName: string, fileSize: number, fileType: string) => {
-  const apiKey = process.env.API_KEY;
-
-  // Gracefully exit if no key is provided, preventing the "Blank Screen" crash
-  if (!apiKey) {
-    return "Ready to beam your file securely!";
-  }
-
-  const isAudio = /\.(mp3|wav|m4a|flac|ogg|aac|wma)$/i.test(fileName) || fileType.includes('audio');
-
   try {
-    // Initialize the client only when needed
+    const apiKey = process.env.API_KEY;
+
+    // Gracefully handle missing or empty API keys without crashing the whole app
+    if (!apiKey || apiKey.trim() === "") {
+      console.warn("Q-Beam: API_KEY is not configured. AI tips will be disabled.");
+      return "Ready to beam your file securely!";
+    }
+
+    const isAudio = /\.(mp3|wav|m4a|flac|ogg|aac|wma)$/i.test(fileName) || fileType.includes('audio');
+
+    // Create instance right before use as per Gemini guidelines
     const ai = new GoogleGenAI({ apiKey });
     
     const response = await ai.models.generateContent({
@@ -31,7 +33,8 @@ export const analyzeFileTransfer = async (fileName: string, fileSize: number, fi
     
     return response.text || "Optimizing your beam for speed and security...";
   } catch (error) {
-    console.error("Gemini analysis failed:", error);
+    // Return fallback text instead of propagating error to UI components
+    console.error("Q-Beam: Gemini analysis failed:", error);
     return "Ready to beam your file securely!";
   }
 };
