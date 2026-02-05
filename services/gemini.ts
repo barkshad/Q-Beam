@@ -1,17 +1,23 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Strictly follow the required initialization pattern
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-
+/**
+ * Analyzes file metadata to provide AI-powered tips.
+ * Initialized lazily to prevent app-level crashes if the API key is missing during boot.
+ */
 export const analyzeFileTransfer = async (fileName: string, fileSize: number, fileType: string) => {
-  // If API_KEY is missing, the environment provides a safe fallback
-  if (!process.env.API_KEY) {
+  const apiKey = process.env.API_KEY;
+
+  // Gracefully exit if no key is provided, preventing the "Blank Screen" crash
+  if (!apiKey) {
     return "Ready to beam your file securely!";
   }
 
   const isAudio = /\.(mp3|wav|m4a|flac|ogg|aac|wma)$/i.test(fileName) || fileType.includes('audio');
 
   try {
+    // Initialize the client only when needed
+    const ai = new GoogleGenAI({ apiKey });
+    
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `User is sending a ${isAudio ? 'song/audio track' : 'file'} via Q-Beam. 
@@ -22,9 +28,10 @@ export const analyzeFileTransfer = async (fileName: string, fileSize: number, fi
       Provide a 1-sentence helpful tip about this format for high-quality sharing. 
       If audio, mention bitrate or fidelity. Keep it brief and professional.`,
     });
-    return response.text;
+    
+    return response.text || "Optimizing your beam for speed and security...";
   } catch (error) {
-    console.error("Gemini analysis failed", error);
-    return "Optimizing your beam for speed and security...";
+    console.error("Gemini analysis failed:", error);
+    return "Ready to beam your file securely!";
   }
 };

@@ -28,17 +28,20 @@ const Sender: React.FC = () => {
       setError(null);
       setFiles(prev => [...prev, ...selected]);
       
-      // Analysis is non-blocking to prevent UI jank
-      analyzeFileTransfer(
-        selected.length > 1 ? `${selected.length} files batch` : selected[0].name,
-        selected.reduce((acc, f) => acc + f.size, 0),
-        selected[0].type
-      ).then(tip => setAiTip(tip || ''));
+      // AI analysis is secondary and shouldn't block the UI or cause crashes
+      try {
+        analyzeFileTransfer(
+          selected.length > 1 ? `${selected.length} files batch` : selected[0].name,
+          selected.reduce((acc, f) => acc + f.size, 0),
+          selected[0].type
+        ).then(tip => setAiTip(tip || ''));
+      } catch (err) {
+        console.warn("AI Tip generation skipped:", err);
+      }
     }
   };
 
   const startUpload = async (e: React.MouseEvent) => {
-    // Prevent any default behavior that might cause page refresh
     e.preventDefault();
     if (files.length === 0 || isUploading) return;
     
@@ -56,8 +59,7 @@ const Sender: React.FC = () => {
         const formData = new FormData();
         formData.append("file", currentFile);
         formData.append("upload_preset", UPLOAD_PRESET);
-        // CRITICAL: Set resource_type to auto to handle audio/songs correctly
-        formData.append("resource_type", "auto");
+        formData.append("resource_type", "auto"); // Critical for audio files
         
         const response = await fetch(CLOUDINARY_URL, { 
           method: "POST", 
